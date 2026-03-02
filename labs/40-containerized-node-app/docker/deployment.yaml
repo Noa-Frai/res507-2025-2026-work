@@ -35,6 +35,10 @@ spec:
             httpGet:
               path: /health
               port: 3232
+          # livenessProbe:
+          #   httpGet:
+          #     path: /mauvais-chemin
+          #     port: 3232
             initialDelaySeconds: 5
             periodSeconds: 10
           readinessProbe:

@@ -4,18 +4,29 @@ import view from "@fastify/view";
 import handlebars from "handlebars";
 import postgres from "@fastify/postgres";
 
-export async function buildApp() {
-  // Create Fastify instance
-  const app = Fastify({ logger: true });
+// Optional overrides let tests inject a fake pg client or silence logging.
+export async function buildApp(options = {}) {
+  const {
+    logger = true,
+    pgClient,
+    databaseUrl = process.env.DATABASE_URL ?? "postgres://postgres@localhost/postgres",
+  } = options;
 
-  // Register plugins
-  await app.register(postgres, {
-    connectionString: process.env.DATABASE_URL ?? 'postgres://postgres@localhost/postgres'
-  })
+  const app = Fastify({ logger });
+
+  if (pgClient) {
+    // Allow tests to bypass a real database connection.
+    app.decorate("pg", pgClient);
+  } else {
+    await app.register(postgres, {
+      connectionString: databaseUrl,
+    });
+  }
+
   await app.register(formbody);
   await app.register(view, {
     engine: { handlebars: handlebars },
-    root: new URL("./views/", import.meta.url).pathname
+    root: new URL("./views/", import.meta.url).pathname,
   });
 
   // Health check endpoint
@@ -23,13 +34,13 @@ export async function buildApp() {
 
   // Get all quotes endpoint
   app.get("/", async (_req, reply) => {
-    /******* TODO SELECT quotes from DB ******/
-    const result = await app.pg.query('SELECT * FROM quotes')
-    const quotes = result.rows;
-
-    // Placeholder test quotes
-    // const quotes = [{text: "quote 1", author: "author 1"}, {text: "quote 2", author: "author 2"}]; 
-    return reply.view("index.hbs", { quotes });
+    try {
+      const result = await app.pg.query("SELECT * FROM quotes");
+      return reply.view("index.hbs", { quotes: result.rows });
+    } catch (err) {
+      app.log.warn({ err }, "Database unavailable");
+      return reply.view("index.hbs", { quotes: [] });
+    }
   });
 
   // Post new quote endpoint
@@ -38,17 +49,24 @@ export async function buildApp() {
     const text = (req.body?.text ?? "").trim();
 
     if (!text) {
-      // Keep it simple: redirect back
       return reply.redirect("/");
     }
 
-    /******* TODO INSERT quote into DB ******/
-    await app.pg.query('INSERT INTO quotes (author, text) VALUES ($1, $2)', [author || "anonymous", text]);
-
-    app.log.info({quote: { author: author || "anonymous", text }}, 'New quote added');
-
-    return reply.redirect("/");
+    try {
+      await app.pg.query("INSERT INTO quotes (author, text) VALUES ($1, $2)", [
+        author || "anonymous",
+        text,
+      ]);
+      app.log.info(
+        { quote: { author: author || "anonymous", text } },
+        "New quote added",
+      );
+      return reply.redirect("/");
+    } catch (err) {
+      app.log.warn({ err }, "Database unavailable");
+      return reply.status(503).send("Database unavailable. Please try again later.");
+    }
   });
-  
+
   return app;
-};
+}
