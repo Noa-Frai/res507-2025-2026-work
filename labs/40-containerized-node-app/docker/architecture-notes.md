@@ -48,3 +48,24 @@ tourne en permanence. Si un Pod meurt, le ReplicaSet en recrée un nouveau.
 - On utilise des VMs pour isoler les clusters entre eux
 - Les containers tournent à l'intérieur des VMs pour la flexibilité
 - Ex: AWS EC2 (VM) qui héberge des pods Kubernetes (containers)
+
+# Etape 4 : 
+
+## Scaling horizontal
+
+### Commande utilisée
+`kubectl scale deployment quote-app --replicas=3 -n quote-lab`
+
+### Qu'est-ce qui change quand on scale ?
+- Le nombre de Pods passe de 1 à 3
+- Le trafic est réparti entre les 3 pods via le Service (load balancing)
+- La capacité de traitement des requêtes augmente
+- La résilience augmente : si un pod tombe, les 2 autres continuent
+
+### Qu'est-ce qui ne change pas ?
+- Le Service reste le même (même IP, même port)
+- La base de données reste unique (partagée par les 3 pods)
+- La configuration de l'application ne change pas
+- L'URL d'accès reste identique pour l'utilisateur
+
+# Etape 5 : 
