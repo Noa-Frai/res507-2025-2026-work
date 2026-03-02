@@ -69,3 +69,22 @@ tourne en permanence. Si un Pod meurt, le ReplicaSet en recrée un nouveau.
 - L'URL d'accès reste identique pour l'utilisateur
 
 # Etape 5 : 
+
+## Simulation de panne
+
+### Qui a recréé le pod ?
+Le contrôleur **ReplicaSet** de Kubernetes a recréé le pod automatiquement.
+Il surveille en permanence que le nombre de pods correspond au nombre
+souhaité (replicas: 3). Dès qu'un pod disparaît, il en recrée un nouveau.
+
+### Pourquoi ?
+Car le Deployment définit un état désiré (3 replicas). Le ReplicaSet
+est responsable de maintenir cet état en permanence. C'est le principe
+de la "réconciliation" dans Kubernetes.
+
+### Que se passerait-il si le nœud lui-même tombait ?
+Si le nœud (la machine) tombe, Kubernetes détecterait le nœud comme
+"NotReady" après un délai (~5 minutes). Les pods seraient alors
+replanifiés sur un autre nœud disponible. Dans notre cas avec un seul
+nœud, l'application serait indisponible jusqu'au retour du nœud.
+C'est pourquoi une architecture de production nécessite plusieurs nœuds.
