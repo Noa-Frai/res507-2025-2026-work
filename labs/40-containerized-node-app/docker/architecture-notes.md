@@ -88,3 +88,29 @@ Si le nœud (la machine) tombe, Kubernetes détecterait le nœud comme
 replanifiés sur un autre nœud disponible. Dans notre cas avec un seul
 nœud, l'application serait indisponible jusqu'au retour du nœud.
 C'est pourquoi une architecture de production nécessite plusieurs nœuds.
+
+
+
+# Etape 6 : 
+
+## Resource Limits
+
+### Requests vs Limits
+
+**Requests** : c'est la quantité de ressources **garantie** au container.
+Kubernetes utilise cette valeur pour décider sur quel nœud placer le pod.
+Si un nœud n'a pas assez de ressources disponibles, le pod ne sera pas
+planifié dessus.
+
+**Limits** : c'est le **maximum** que le container peut consommer.
+Si le container dépasse la limite CPU, il est ralenti (throttling).
+S'il dépasse la limite mémoire, il est tué (OOMKilled) et redémarré.
+
+### Pourquoi c'est important dans un système multi-tenant ?
+Dans un cluster partagé entre plusieurs équipes ou applications :
+- Sans limits, un container peut consommer toutes les ressources du nœud
+  et faire tomber les autres applications
+- Les requests garantissent que chaque app a les ressources minimales
+  dont elle a besoin
+- Les limits protègent le cluster contre les fuites mémoire ou les
+  boucles infinies qui consommeraient tout le CPU
