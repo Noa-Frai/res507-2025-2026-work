@@ -286,3 +286,61 @@ strategy:
 
 
 
+
+# Etape optionnelle : Critique Architecture : 
+
+## Critique de l'Architecture
+
+### Points de défaillance uniques (Single Points of Failure)
+
+- **Nœud unique** : tout le cluster tourne sur une seule machine.
+  Si le nœud tombe, toute l'application est indisponible.
+- **Pod unique** : en configuration normale (replicas: 1), si le pod
+  redémarre, l'app est coupée le temps du redémarrage.
+- **Postgres dans le même pod que l'app** : si le pod est tué,
+  la base de données est coupée en même temps que l'application.
+  Une base de données devrait idéalement tourner séparément.
+- **PVC local** : le stockage est sur le nœud lui-même. Si le nœud
+  est perdu physiquement, les données sont perdues avec lui.
+
+### Risques opérationnels
+
+- **Pas de backup automatique** : aucun mécanisme ne sauvegarde
+  les données PostgreSQL. Une suppression accidentelle ou une
+  corruption = perte définitive des données.
+- **Image locale non versionnée dans un registry** : l'image
+  quote-app:local existe uniquement sur cette machine. Impossible
+  de la redéployer sur un autre nœud sans la rebuilder.
+- **Pas de CI/CD** : les mises à jour sont faites manuellement
+  avec kubectl. Risque d'erreur humaine et pas de rollback
+  automatique en cas d'échec.
+- **Ressources sous-dimensionnées** : les limits actuelles
+  (250m CPU, 256Mi RAM) peuvent être trop faibles sous charge,
+  provoquant du throttling ou des OOMKill.
+
+### Problèmes de sécurité
+
+- **Secret non chiffré** : le Secret Kubernetes est encodé en
+  base64 mais pas chiffré dans etcd. N'importe qui ayant accès
+  au cluster peut lire les credentials.
+- **Pas de NetworkPolicy** : tous les pods peuvent communiquer
+  entre eux librement. Un pod compromis peut atteindre la base
+  de données directement.
+- **Pas de RBAC configuré** : tous les utilisateurs du cluster
+  ont les mêmes droits. En production, il faudrait des rôles
+  distincts (dev, ops, read-only).
+- **Image non scannée** : l'image quote-app:local n'est pas
+  analysée pour des vulnérabilités connues (pas de trivy/snyk).
+
+### Lacunes d'observabilité (Observability Gaps)
+
+- **Pas de monitoring** : aucun Prometheus ni Grafana installé.
+  Impossible de voir la consommation CPU/RAM en temps réel.
+- **Pas de logging centralisé** : les logs sont uniquement
+  accessibles via kubectl logs. Si le pod redémarre, les logs
+  sont perdus. Pas de Loki ni d'ELK Stack.
+- **Pas d'alerting** : aucune alerte ne se déclenche si le pod
+  tombe ou si la mémoire est saturée.
+- **Pas de tracing** : impossible de suivre une requête de bout
+  en bout entre l'app et la base de données.
+
