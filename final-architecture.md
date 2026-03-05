@@ -126,3 +126,44 @@ En production réelle, on utiliserait :
 - Une solution managée comme AWS RDS ou Google Cloud SQL
 - Ou un opérateur Kubernetes dédié comme CloudNativePG pour gérer
   la réplication et le failover automatique de PostgreSQL
+
+  # Stretch Thinking
+
+## Qu'est-ce qui céderait en premier sous 10× le trafic ?
+
+PostgreSQL serait le premier goulot d'étranglement. Les 3 pods applicatifs
+multiplieraient leurs requêtes vers un seul pod Postgres qui n'a pas été
+dimensionné pour absorber une telle charge. Ses resource limits seraient
+atteintes rapidement, provoquant du throttling CPU puis un OOMKill.
+L'application continuerait de tourner mais toutes les requêtes vers la
+base de données échoueraient.
+
+## Quels signaux de monitoring surveiller en priorité ?
+
+- Latence des requêtes HTTP (p95, p99) — premier signe de dégradation
+- Consommation mémoire du pod postgres — indique un risque d'OOMKill
+- Nombre de connexions actives sur PostgreSQL — détecte la saturation
+- Taux d'erreurs 5xx sur le Service — visible côté utilisateur
+- CPU throttling sur les pods applicatifs — indique des limits trop basses
+
+## Comment déployer ce système sur plusieurs nœuds ou régions ?
+
+Sur plusieurs nœuds : utiliser un cluster Kubernetes multi-nœuds avec
+un StorageClass distribué (ex: Longhorn, Ceph) pour que le PVC ne soit
+plus attaché à un seul nœud. Le scheduler Kubernetes répartirait
+automatiquement les pods sur les nœuds disponibles.
+
+Sur plusieurs régions : déployer un cluster par région avec un load
+balancer global devant (ex: AWS Route53, Cloudflare). La base de données
+serait répliquée entre régions via une solution managée comme AWS RDS
+Multi-AZ. C'est plus complexe car il faut gérer la cohérence des données
+entre régions.
+
+## Quelle partie nécessiterait des machines virtuelles plutôt que des containers ?
+
+PostgreSQL en production critique bénéficierait d'une VM dédiée ou d'un
+service managé. Une base de données a besoin d'un accès direct au stockage
+physique, de garanties IOPS précises et d'une isolation forte pour éviter
+qu'un autre workload ne perturbe ses performances. Les containers partagent
+le kernel et le scheduler CPU de l'hôte, ce qui peut introduire de la
+latence imprévisible pour une base de données.
