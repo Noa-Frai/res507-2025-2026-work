@@ -3,8 +3,6 @@
 ## Problème 1 — PostgreSQL dans le même container que l'application
 L'application et la base de données tournent dans le même pod.
 Si le pod redémarre ou crashe, les deux composants tombent simultanément.
-En production, cela signifie une perte totale du service et un risque
-de corruption des données à chaque incident.
 
 ## Problème 2 — Pod unique, aucune résilience
 Un seul pod fait tourner l'ensemble du système. Aucune redondance n'est
@@ -62,7 +60,7 @@ données, introduit de la redondance, et sécurise les secrets.
 
 ## Diagramme
 
-![Architecture de production](./architecture-diagram.png)
+![Architecture de production](./architecture-diagram.drawio.png)
 
 # Operational Strategy
 
